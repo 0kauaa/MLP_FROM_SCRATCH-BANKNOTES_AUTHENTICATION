@@ -1,0 +1,245 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{mathrsfs}
+\usepackage{geometry}
+\usepackage{indentfirst}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+
+\geometry{a4paper, top=3cm, bottom=2cm, left=3cm, right=2cm}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0.2cm}
+\onehalfspacing
+
+\titleformat{\section}{\normalfont\bfseries\Large}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\bfseries\large}{\thesubsection}{1em}{}
+
+\begin{document}
+
+\begin{center}
+    \large FACULDADE DE TECNOLOGIA DO ESTADO DE SÃO PAULO\\
+    CURSO SUPERIOR TECNOLÓGICO DE CIÊNCIA DE DADOS
+
+    \vspace{5cm}
+
+    \textbf{KAUÃ SANTANA DA SILVA}
+
+    \vspace{3cm}
+
+    \textbf{CLASSIFICAÇÃO DE AUTENTICIDADE DE CÉDULAS BANCÁRIAS COM UM MODELO DE REDE NEURAL ARTIFICIAL}
+
+    \vfill
+
+    \textbf{SANTOS 2024}
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Os Dados}
+
+Para o treinamento do modelo, foi utilizado o conjunto de dados Banknote Authentication, de autoria de Volker Lohweg (2012), um conjunto de dados reais, utilizado no procedimento de avaliação de autenticidade de cédulas bancárias. Os dados do conjunto foram extraídos da digitalização de imagens em 400x400 pixels, utilizando-se da Transformada de Wavelet para a extração de dados estatísticos. O conjunto está disponível no repositório UCI Machine Learning Repository (2013). Não foram encontradas fontes sobre a origem das notas estudadas.
+
+O conjunto apresenta 1372 registros e 4 dimensões, sendo composto por três variáveis contínuas e uma qualitativa — representando a autenticidade da nota. A descrição do conjunto, segundo UCI Machine Learning Repository, pode ser visualizada na tabela \ref{tab:dic} abaixo
+
+\begin{table}[H]
+\centering
+\caption{Dicionário de dados do conjunto}
+\label{tab:dic}
+\begin{tabular}{|l|l|l|p{7cm}|}
+\hline
+\textbf{Variável} & \textbf{Atributo} & \textbf{Tipo} & \textbf{Descrição} \\ \hline
+variance & Feature & contínua & variância da imagem pós Transformada de Wavelet \\ \hline
+skewness & Feature & contínua & assimetria da imagem pós Transformada de Wavelet \\ \hline
+kurtosis & Feature & contínua & curtose da imagem pós Transformada de Wavelet \\ \hline
+entropy & Feature & contínua & entropia da imagem \\ \hline
+class & Target & inteiro & Autenticidade da nota observada: 0 - Falsa; 1 - Verdadeira \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{center}
+    Fonte: Adaptado de UCI Machine Learning Repository, 2013.
+\end{center}
+
+
+\section{Modelo}
+
+Para a realização da classificação, foi utilizada uma rede neural artificial densa \textit{Multi-layer Perceptron} (MLP), por meio da linguagem de programação Python e, por questões de aprendizado,  escolhida a construção de uma rede do “zero”, sem o uso de bibliotecas e APIs, tais como TensorFlow, Keras e Pytorch, para a modelagem da rede.
+
+
+\subsection{Arquitetura da Rede}
+
+A rede contou com a arquitetura padrão MLP, com uma camada de entrada, uma camada de saída e uma série de camadas ocultas. Tanto o número de saídas quanto o tamanho da série oculta foram generalizados de forma dinâmica, para serem estabelecidos no instante do treinamento,  porém, padrões foram estabelecidos para tais parâmetros, sendo: 10 camadas ocultas e 2 neurônios de saída.
+
+Para a inicialização dos pesos e dos \textit{bias} da rede, foi utilizado o método \textit{Xavier Normal Initialization}, inicializando os pesos aleatóriamente a partir de uma distribuição normal e os \textit{bias} como zero, o que ajuda a manter a variância dos sinais ao longo das camadas (Stanford, 2024).
+
+
+\subsection{Feedforward: Ativação e Perda}
+
+Para o processo de sinapse da rede, a comunicação entre as camadas, informação foi vetorizada por meio da equação da reta, dada por:
+
+\begin{equation}
+    z = wx + b
+\end{equation}
+
+Onde \textit{z} é o vetor resultante, \textit{x} a informação de entrada, \textit{w} o peso respectivo à conexão entre os neurônios da camada de entrada e da camada escondida e \textit{b} o \textit{bias} inicializado para a conexão. 
+
+Na primeira sinapse da rede, entre a camada de entrada e de saída, foi utilizada a Tangente Hiperbólica como função de ativação entre a camada de entrada e as camadas escondidas. Essa função “ativa a informação’ resultante da sinapse, separando os dados entre -1 e 1:
+
+
+\begin{equation}
+    tanh(z) = \frac{e^z - e^{-z}}{e^z + e^{-z}}
+\end{equation}
+
+Já na segunda sinapse, da camada escondida com a camada de saída, utilizou-se a função \textit{softmax} na camada de saída, cujo objetivo é transformar os vetores calculados pela rede em uma distribuição de probabilidade. Isso permite que a rede forneça uma “resposta final”, em termos de probabilidade, indicando a confiança atribuída a cada classe:
+
+\begin{equation}
+    {softmax}(z_i) = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}}
+\end{equation}
+
+Para o cálculo da perda, foi escolhido a função \textit{Categorical Cross-Entropy} (CCE). Essa função basicamente nos diz o quanto o modelo errou na predição da classe, com base em sua probabilidade. Ela avalia o quanto a probabilidade prevista pelo modelo se afasta do valor verdadeiro para cada amostra, e retorna uma média logarítmica ponderada desse erro sobre todo o conjunto. Seja \( y \in \{0, 1\} \) o rótulo real da i-ésima amostra, e \( \hat{y} \) o rótulo previsto pelo modelo para essa amostra, a função de perda BCE é dada por:
+
+\begin{equation}
+    CCE = -\frac{1}{N} \sum_{i=1}^N \sum_{k=1}^K y_{ik} \log(\hat{y}_{ik})
+\end{equation}
+
+Aqui, \textit{N} é o total de dados, \textit{K} representa o total de classes e a somatória dupla é para avaliar o desempenho do modelo para todas as classes, percorrendo todos os dados. Assim, a função compara a distribuição de probabilidade prevista pela rede com a distribuição real dos dados, retornando o erro entre elas.
+
+
+\subsection{Backpropagation: Aprendizado e Otimização}
+
+Após o processo de sinapse, e rede inicia o processo de aprendizado, no qual ela refaz todo processo de feedforward, porém inversamente, meio que “andando para trás”. A rede retorna em seus cálculos, entendendo onde errou e ajustando os pesos e os \textit{bias} na direção da menor perda. Em outras palavras, ela otimiza o aprendizado, minimizando a função de erro.
+
+Este processo ocorre por meio da descida do gradiente da função de erro. De forma simples, os gradientes de uma função nos dá um vetor que aponta para a direção de sua maior variação. Aplicando isso à CCE, função de erro da rede, teremos a direção que causa maior erro. Logo, basta calcular os gradientes da CCE em relação às variáveis de aprendizado da rede, os pesos e os \textit{bias}, atualizando-os no sentido de diminuir o erro.
+A ideia é simples, porém, a CCE não está diretamente ligada a estas variáveis, já que ela é aplicada apenas ao final da rede. A solução, então, é entender por onde a CCE se liga às variáveis, para entender como elas influenciam sua variação.
+Seja a CCE e  a saída da softmax, na Figura \ref{fig:backprop} abaixo, visualiza-se a conexão da CCE com as demais funções e variáveis da rede.
+
+
+\begin{figure}[H]
+    \centering
+    \caption{\fontsize{10}{12}\selectfont Conexão funcional da rede da saída para a entrada}
+    \includegraphics[width=0.8\textwidth]{images/processo_backprop.png}
+    \caption*{\fontsize{10}{12}\selectfont Fonte: Elaborado pelo autor, 2025.}
+    \label{fig:backprop}
+\end{figure}
+
+Com a Figura \ref{fig:backprop}, podemos entender o caminho a ser percorrido pela rede no \textit{backpropagation}, a fim de ajustar as variáveis de aprendizado.
+
+Para isso, o Cálculo nos fornece uma ferramenta poderosa para lidar com este problema: a regra da cadeia. No fundo, pode-se dizer que uma rede neural é uma “enorme regra da cadeia”, e seu aprendizado se dá quase que puramente por sua aplicação. Este método nos permite entender a variação de uma função aplicada à outra, ou outras.
+
+Neste caso, a regra da cadeia se dará pelas derivadas parciais da função à esquerda em relação à da direita, seguindo assim, respectivamente, até a entrada, onde as variáveis de aprendizado são inicializadas.
+
+Após os cálculos, basta atualizar as variáveis pelos resultados obtidos, para que os erros de aprendizados sejam corrigidos. Este é um passo simples, porém de extrema importância para o aprendizado da rede. Comparando com aprendizado humano, se as variáveis não forem atualizadas, seria como se nós aprendêssemos, porém nunca nos lembrássemos de nada do que aprendemos.
+
+\begin{itemize}
+    \item Erro em relação ao peso de saída
+    \[
+    \frac{\partial \mathscr{L}}{\partial w_2} =
+    \frac{\partial \mathscr{L}}{\partial \hat{y}} \cdot
+    \frac{\partial \hat{y}}{\partial z_2} \cdot
+    \frac{\partial z_2}{\partial w_2}
+    \]
+
+    \item Erro em relação ao \textit{bias} de entrada
+    \[
+    \frac{\partial \mathscr{L}}{\partial b_2} = \delta_2
+    \]
+
+    \item Erro em relação ao peso de entrada
+    \[
+    \frac{\partial \mathscr{L}}{\partial w_1} =
+    \frac{\partial \mathscr{L}}{\partial \hat{y}} \cdot
+    \frac{\partial \hat{y}}{\partial z_2} \cdot
+    \frac{\partial z_2}{\partial \alpha_1} \cdot
+    \frac{\partial \alpha_1}{\partial z_1}
+    \]
+
+    \item Erro em relação ao \textit{bias} de entrada
+    \[
+    \frac{\partial \mathscr{L}}{\partial b_1} = \delta_1
+    \]
+\end{itemize}
+
+Uma breve, porém importante, observação sobre as derivadas parciais acima: durante os cálculos, o termo $\frac{\partial \mathscr{L}}{\partial z_i}$, a derivada parcial de $\mathscr{L}$ em relação a uma sinapse, seja da camada de entrada ou da camada de saída, torna a aparece repetidas vezes e, por isso, é comum substituí-lo por $\delta$, como feito acima. Este termo representa o erro local de um neurônio durante a sinapse. Nos casos em que se utilizam as funções \textit{softmax} e \textit{tangente hiperbólica} juntas, ele se dá pela diferença entre a previsão e o rótulo real: $\hat{y} - y$.
+
+Por fim, com as variáveis atualizadas, basta repetir o processo até que o erro seja mínimizado. Para isso, utiliza-se as \textit{epochs}, as vezes em que a rede revisitará os dados, ajustando as variáveis e reparando seus erros. O número de \textit{epochs} é escolhido durante o processo de treinamento e deve ser escolhido com cautela. Caso o número de \texit{epochs} seja pequeno, a rede não se ajustará o suficiente aos dados e não aprenderá seus padrões, causando o chamado \textit{underfitting}. Caso o número de \texit{epochs} seja grande, a rede se ajustará demais aos dados, deixando de aprender e passando a memorizar os padrões dos dados, causando o chamado \textit{overfitting}. Ambos os casos ocasionará em uma má performance da rede.
+
+\section{Aplicação}
+
+Com a obtenção do conjunto em formato CSV, foi necessário fazer alguns ajustes de pré-processamento, antes da aplicação do modelo.
+
+A fim de uma melhor interpretação dos resultados, foi realizada a alteração dos valores das classes, sendo substituídos de 0 e 1 para genuine e forged, representando observações verdadeiras e falsas, respectivamente. Além disso, para viabilizar a aplicação do modelo aos dados, foi feita a separação dos dados em Feature e Target, para entrada e saída do modelo. A variável class foi separada do restante dos dados, num conjunto Y. Todas as variáveis restantes foram separadas no conjunto X.
+
+\subsection{PCA}
+
+Considerando a exigência de visualização dos resultados, ainda no pré-processamento, foi feita a aplicação do \textit{Principal Component Analysis} (PCA), sendo reduzida a dimensionalidade dos dados para duas componentes. Para sua aplicação, foi utilizado o método \textit{Standard Scaler}, da biblioteca \textit{Scikit-learn}, para a normalização dos dados. A distribuição dos dados resultante do PCA pode ser observada na Figura \ref{fig:pca}. Com o propósito de comparação da performance do modelo, os dados originais foram preservados.
+
+\begin{figure}[H]
+    \centering
+    \caption{\fontsize{10}{12}\selectfont Distribuição dos dados em duas Componentes Principais}
+    \includegraphics[width=0.8\textwidth]{images/pca.png}
+    \caption*{\fontsize{10}{12}\selectfont Fonte:  Adaptado de Lohweg, 2012.}
+    \label{fig:pca}
+\end{figure}
+
+Visualizando a distribuição dos dados em duas dimensões, nota-se uma nuvem de confusão sobrepondo os dados uns nos outros, entre os valores de -2 a 2, na primeira componente, e entre os valores de 1 a -2, na segunda componente. Com isso, levanta-se a hipótese de que o modelo não saberá lidar com a sobreposição dos dados de classes diferentes, não performando tão bem em relação a estes dados.
+
+\section{Resultados}
+
+Feito a aplicação do modelo em ambos datasets, com e sem PCA, pode-se comparar os resultados e entender como o modelo performou com o mesmo problema, em dimensões diferentes.
+
+Utilizando 10 camadas escondidas, 2 camadas de saída, 20 épocas de treinamento e um \textit{learning rate} de 0.001, chegou-se aos resultados mostrados na Figura \ref{fig:result1} abaixo.
+
+
+\begin{figure}[H]
+    \centering
+    \caption{\fontsize{10}{12}\selectfont Acurácia e Perda no treinamento sem PCA}
+    \includegraphics[width=1.1\textwidth]{images/acc1.png}
+    \caption*{\fontsize{10}{12}\selectfont Fonte: Elaborado pelo autor, 2025.}
+    \label{fig:result1}
+\end{figure}
+
+
+Utilizando 200 camadas escondidas, 2 camadas de saída, 300 épocas de treinamento e um learning rate de 0.001, chegou-se aos resultados mostrados na Imagem \ref{fig:result2} abaixo.
+
+\begin{figure}[H]
+    \centering
+    \caption{\fontsize{10}{12}\selectfont Acurácia e Perda no treinamento com PCA}
+    \includegraphics[width=1.1\textwidth]{images/acc2.png}
+    \caption*{\fontsize{10}{12}\selectfont Fonte: Elaborado pelo autor, 2025.}
+    \label{fig:result2}
+\end{figure}
+
+Com os resultados das Figuras \ref{fig:result1} e \ref{fig:result2}, nota-se que o modelo realmente performou melhor com os dados nas 4 dimensões originais que nas 2 dimensões reduzidas com o PCA, como levantado na hipótese anteriormente. Para entender melhor como ele lidou com os dados sobrepostos, visualiza-se abaixo, na Figura \ref{fig:result3}, os resultados gráficos da classificação dos dados com PCA.
+
+\begin{figure}[H]
+    \centering
+    \caption{\fontsize{10}{12}\selectfont Resultados gráficos do processo de classificação em duas Componentes Principais}
+    \includegraphics[width=1.1\textwidth]{images/resultados_pca.png}
+    \caption*{\fontsize{10}{12}\selectfont Fonte: Adaptado de Lohweg, 2012.}
+    \label{fig:result3}
+\end{figure}
+
+Nota-se, portanto, a confusão do modelo ao classificar os dados na nuvem de confusão, o que explica a acurácia consideravelmente menor para estes dados, indo de 77\% para aproximadamente 83\%, com uma perda de 10e-3 (após a terceira casa decimal); enquanto que, para os dados originais, o modelo foi de 88\% para 99\%, alcançando uma perdas 10e-4 (após a quarta casa decimal).
+
+\newpage
+
+\section*{Referências}
+
+\begin{flushleft}
+
+    NG, Andrew; KATANFOROOSH, Kian. \textit{Section 4 (Week 4). Xavier Initialization and Regularization}. Stanford University, 2024. Disponível em: \texttt{https://cs230.stanford.edu/section/4/}. Acesso em: 30 maio 2025.
+
+    UCI MACHINE LEARNING REPOSITORY. Banknote Authentication Data Set. Disponível em: https://archive.ics.uci.edu/ml/datasets/banknote+authentication. Acesso em: 12 jun. 2025.
+
+\end{flushleft}
+
+\end{document}
